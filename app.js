@@ -69,7 +69,7 @@ async function chargerCatalogue() {
         : produits.filter(function (p) { return p.categorie === filtre; });
 
       if (produitsFiltrés.length === 0) {
-        html = '<div class="vide"><p>Aucun produit dans cette catégorie pour le moment.</p></div>';
+        html = '<div class="vide"><p>Aucun pack dans cette catégorie pour le moment.</p></div>';
       } else {
         produitsFiltrés.forEach(function (p, index) {
           // Trouver l'index original dans la liste complète
@@ -78,7 +78,7 @@ async function chargerCatalogue() {
             '<a href="produit.html?id=' + origIndex + '" class="produit-card" style="animation-delay:' + (index * 0.08) + 's">' +
               '<div class="produit-card-img-wrap">' +
                 '<img class="produit-card-img" src="' + (p.image || IMG_PLACEHOLDER) + '" alt="' + p.nom + '" loading="lazy" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'">' +
-                '<div class="produit-card-overlay"><span>Voir le produit</span></div>' +
+                '<div class="produit-card-overlay"><span>Voir le pack</span></div>' +
               '</div>' +
               '<div class="produit-card-body">' +
                 '<div class="produit-card-categorie">' + (p.categorie || "") + "</div>" +
@@ -105,7 +105,7 @@ async function chargerCatalogue() {
   } catch (err) {
     grille.innerHTML =
       '<div class="erreur-msg">' +
-        '<h2>Impossible de charger les produits</h2>' +
+        '<h2>Impossible de charger les packs</h2>' +
         '<p>Vérifiez votre connexion internet et réessayez.</p>' +
       '</div>';
   }
@@ -125,7 +125,7 @@ async function chargerProduit() {
 
   var id = getParam("id");
   if (id === null) {
-    container.innerHTML = '<div class="erreur-msg"><h2>Produit introuvable</h2><p><a href="index.html" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
+    container.innerHTML = '<div class="erreur-msg"><h2>Pack introuvable</h2><p><a href="index.html" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
     return;
   }
 
@@ -135,7 +135,7 @@ async function chargerProduit() {
     var produit = produits[parseInt(id)];
 
     if (!produit) {
-      container.innerHTML = '<div class="erreur-msg"><h2>Produit introuvable</h2><p><a href="index.html" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
+      container.innerHTML = '<div class="erreur-msg"><h2>Pack introuvable</h2><p><a href="index.html" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
       return;
     }
 
@@ -166,14 +166,14 @@ async function chargerProduit() {
               'Paiement sécurisé' +
             '</div>' +
             '<div class="trust-badge">' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>' +
-              'Livraison rapide' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>' +
+              'Service personnalisé' +
             '</div>' +
           '</div>' +
 
           // Formulaire
           '<div class="commande-form">' +
-            '<h2>Passer commande</h2>' +
+            '<h2>Réserver ce pack</h2>' +
 
             '<div class="form-group">' +
               '<label for="nom">Nom complet <span class="obligatoire">*</span></label>' +
@@ -203,7 +203,7 @@ async function chargerProduit() {
               '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(produit.prix) + '</span></div>' +
             '</div>' +
 
-            '<button type="button" class="btn-commander" id="btn-commander">Confirmer la commande</button>' +
+            '<button type="button" class="btn-commander" id="btn-commander">Réserver maintenant</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -217,7 +217,7 @@ async function chargerProduit() {
 
   } catch (err) {
     container.innerHTML =
-      '<div class="erreur-msg"><h2>Impossible de charger le produit</h2><p>Vérifiez votre connexion internet et réessayez.</p></div>';
+      '<div class="erreur-msg"><h2>Impossible de charger le pack</h2><p>Vérifiez votre connexion internet et réessayez.</p></div>';
   }
 }
 
@@ -323,15 +323,15 @@ function afficherConfirmation(data) {
   container.innerHTML =
     '<div class="confirmation">' +
       '<div class="confirmation-icon">&#10003;</div>' +
-      '<h1>Commande confirmée !</h1>' +
-      '<p>Merci pour votre confiance. Vous allez recevoir le lien de paiement Orange Money par email très prochainement.</p>' +
+      '<h1>Réservation confirmée !</h1>' +
+      '<p>Merci pour votre confiance ! Vous allez recevoir les instructions de paiement par email très prochainement. Notre équipe vous contactera pour les détails de votre prestation.</p>' +
       '<div class="recap-box">' +
         '<div class="recap-ligne"><span>Produit</span><span>' + produitActuel.nom + '</span></div>' +
         '<div class="recap-ligne"><span>Client</span><span>' + data.client + '</span></div>' +
         (data.code_promo ? '<div class="recap-ligne"><span>Code promo</span><span>' + data.code_promo + ' (-' + data.reduction + '%)</span></div>' : '') +
         '<div class="recap-ligne"><span>Montant à payer</span><span>' + formatPrix(data.montant_final) + '</span></div>' +
       '</div>' +
-      '<a href="index.html" class="btn-retour-accueil">Continuer mes achats</a>' +
+      '<a href="index.html" class="btn-retour-accueil">Voir nos autres packs</a>' +
     '</div>';
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
