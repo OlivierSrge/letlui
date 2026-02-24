@@ -173,7 +173,7 @@ function creerCommande(data) {
 
   // Date formatée
   var maintenant = new Date();
-  var dateFormatee = Utilities.formatDate(maintenant, "Africa/Abidjan", "yyyy-MM-dd HH:mm");
+  var dateFormatee = Utilities.formatDate(maintenant, "Africa/Douala", "yyyy-MM-dd HH:mm");
 
   // Ajouter la ligne dans l'onglet Commandes
   var sheetCmd = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ONGLET_COMMANDES);
