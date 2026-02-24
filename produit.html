@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Produit — L et Lui Signature</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍</text></svg>">
+</head>
+<body>
+
+  <!-- Bandeau promo -->
+  <div class="promo-bar">
+    Livraison disponible partout en Côte d'Ivoire
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">L et Lui <span>Signature</span></a>
+    </div>
+    <div class="header-divider"></div>
+  </header>
+
+  <!-- Contenu produit -->
+  <main class="produit-detail" id="produit-detail">
+    <div class="chargement" id="chargement">
+      <div class="spinner"></div>
+      <p>Chargement du produit...</p>
+    </div>
+  </main>
+
+  <!-- Overlay chargement commande -->
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <div class="spinner"></div>
+      <p>Envoi de votre commande...</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-brand">L et Lui <span>Signature</span></div>
+    <p class="footer-text">Votre boutique en ligne de confiance</p>
+    <div class="footer-copy">&copy; 2025 L et Lui Signature — Tous droits réservés</div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    window.addEventListener('scroll', function() {
+      document.getElementById('header').classList.toggle('scrolled', window.scrollY > 50);
+    });
+  </script>
+</body>
+</html>

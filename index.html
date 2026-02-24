@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="L et Lui Signature — Boutique en ligne de produits tendance. Livraison en Côte d'Ivoire.">
+  <title>L et Lui Signature</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍</text></svg>">
+</head>
+<body>
+
+  <!-- Bandeau promo -->
+  <div class="promo-bar">
+    Livraison disponible partout en Côte d'Ivoire
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <div class="header-inner">
+      <a href="index.html" class="logo">L et Lui <span>Signature</span></a>
+    </div>
+    <div class="header-divider"></div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-subtitle">Nouvelle collection</div>
+    <h1 class="hero-title">L'élégance<br>à votre portée</h1>
+    <p class="hero-text">Découvrez notre sélection de produits tendance, soigneusement choisis pour vous.</p>
+    <a href="#catalogue" class="hero-btn">Voir la collection</a>
+  </section>
+
+  <!-- Titre section -->
+  <div class="section-header" id="catalogue">
+    <h2>Nos produits</h2>
+    <p>Parcourez notre catalogue et trouvez votre bonheur</p>
+  </div>
+
+  <!-- Filtres catégories -->
+  <section class="filtres">
+    <div class="filtres-list" id="filtres">
+      <button class="filtre-btn actif" data-categorie="tous">Tous</button>
+    </div>
+  </section>
+
+  <!-- Grille produits -->
+  <main class="produits-grid" id="produits-grid">
+    <div class="chargement" id="chargement">
+      <div class="spinner"></div>
+      <p>Chargement des produits...</p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-brand">L et Lui <span>Signature</span></div>
+    <p class="footer-text">Votre boutique en ligne de confiance</p>
+    <div class="footer-copy">&copy; 2025 L et Lui Signature — Tous droits réservés</div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+
+  <!-- Header scroll effect -->
+  <script>
+    window.addEventListener('scroll', function() {
+      document.getElementById('header').classList.toggle('scrolled', window.scrollY > 50);
+    });
+  </script>
+</body>
+</html>
