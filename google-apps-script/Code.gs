@@ -315,16 +315,24 @@ function envoyerEmailClient(info) {
 function convertirLienDrive(url) {
   if (!url) return "";
 
+  var fileId = "";
+
   // Format : https://drive.google.com/file/d/FILE_ID/view
   var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (match) {
-    return "https://drive.google.com/uc?export=view&id=" + match[1];
+    fileId = match[1];
   }
 
   // Format : https://drive.google.com/open?id=FILE_ID
-  match = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (match) {
-    return "https://drive.google.com/uc?export=view&id=" + match[1];
+  if (!fileId) {
+    match = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) {
+      fileId = match[1];
+    }
+  }
+
+  if (fileId) {
+    return "https://lh3.googleusercontent.com/d/" + fileId;
   }
 
   // Déjà au bon format ou URL externe
