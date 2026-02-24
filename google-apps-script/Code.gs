@@ -6,7 +6,9 @@
 // ============================================================
 
 // --- CONFIGURATION ---
-var EMAIL_VENDEUR = "olivierfinestone@gmail.com"; // <-- Remplacez par votre email
+var EMAIL_VENDEUR = "olivierfinestone@gmail.com";
+var ORANGE_MONEY_NUMERO = "6 93 40 79 64";
+var ORANGE_MONEY_NOM = "Olivier SERGE";
 
 // --- Noms des onglets ---
 var ONGLET_PRODUITS = "Produits";
@@ -210,6 +212,14 @@ function creerCommande(data) {
     date: dateFormatee,
   });
 
+  // Envoyer email au client avec instructions de paiement
+  envoyerEmailClient({
+    nom_client: data.nom_client.trim(),
+    email_client: data.email_client.trim(),
+    produit: data.produit_nom,
+    montant_final: montantFinal,
+  });
+
   return {
     succes: true,
     message: "Commande enregistrée avec succès",
@@ -265,6 +275,35 @@ function envoyerEmailVendeur(info) {
     MailApp.sendEmail(EMAIL_VENDEUR, sujet, corps);
   } catch (err) {
     Logger.log("Erreur envoi email : " + err.message);
+  }
+}
+
+// ============================================================
+// ENVOI EMAIL AU CLIENT — Instructions de paiement
+// ============================================================
+function envoyerEmailClient(info) {
+  var sujet = "L et Lui Signature — Votre commande pour " + info.produit;
+
+  var corps =
+    "Bonjour " + info.nom_client + ",\n\n" +
+    "Merci pour votre commande !\n\n" +
+    "━━━━━━━━━━━━━━━━━━━━\n" +
+    "RÉCAPITULATIF\n" +
+    "Produit : " + info.produit + "\n" +
+    "Montant à payer : " + formatFCFA(info.montant_final) + " FCFA\n" +
+    "━━━━━━━━━━━━━━━━━━━━\n\n" +
+    "Pour finaliser votre commande, envoyez " + formatFCFA(info.montant_final) + " FCFA par Orange Money au :\n\n" +
+    "Numéro : " + ORANGE_MONEY_NUMERO + "\n" +
+    "Nom du titulaire : " + ORANGE_MONEY_NOM + "\n\n" +
+    "━━━━━━━━━━━━━━━━━━━━\n\n" +
+    "Votre commande sera confirmée dès réception du paiement.\n\n" +
+    "Merci pour votre confiance !\n" +
+    "L'équipe L et Lui Signature";
+
+  try {
+    MailApp.sendEmail(info.email_client, sujet, corps);
+  } catch (err) {
+    Logger.log("Erreur envoi email client : " + err.message);
   }
 }
 
