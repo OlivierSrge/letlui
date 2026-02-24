@@ -545,6 +545,70 @@ img {
   margin-bottom: 2rem;
 }
 
+/* Description longue HTML */
+.description-longue {
+  max-width: 1100px;
+  margin: 3rem auto 0;
+  padding: 2.5rem;
+  background: var(--blanc);
+  border: 1.5px solid var(--gris-100);
+  border-radius: var(--radius);
+  line-height: 1.8;
+  color: var(--gris-700);
+  font-size: 0.95rem;
+}
+
+.description-longue h1,
+.description-longue h2,
+.description-longue h3,
+.description-longue h4 {
+  color: var(--noir);
+  font-family: var(--font-display);
+  margin: 1.5rem 0 0.75rem;
+  line-height: 1.3;
+}
+
+.description-longue h1 { font-size: 1.6rem; }
+.description-longue h2 { font-size: 1.3rem; }
+.description-longue h3 { font-size: 1.1rem; }
+
+.description-longue h1:first-child,
+.description-longue h2:first-child,
+.description-longue h3:first-child {
+  margin-top: 0;
+}
+
+.description-longue p {
+  margin-bottom: 1rem;
+}
+
+.description-longue ul,
+.description-longue ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.description-longue li {
+  margin-bottom: 0.5rem;
+}
+
+.description-longue strong {
+  color: var(--noir);
+  font-weight: 700;
+}
+
+.description-longue hr {
+  border: none;
+  height: 1px;
+  background: var(--gris-100);
+  margin: 2rem 0;
+}
+
+.description-longue img {
+  border-radius: var(--radius-sm);
+  margin: 1rem 0;
+}
+
 /* Trust badges */
 .trust-badges {
   display: flex;

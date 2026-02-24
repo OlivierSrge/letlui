@@ -206,7 +206,10 @@ async function chargerProduit() {
             '<button type="button" class="btn-commander" id="btn-commander">Réserver maintenant</button>' +
           '</div>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+
+      // Description longue HTML (sous le bloc produit)
+      (produit.description_longue ? '<div class="description-longue">' + produit.description_longue + '</div>' : '');
 
     // Événements
     document.getElementById("btn-verifier").addEventListener("click", verifierCode);

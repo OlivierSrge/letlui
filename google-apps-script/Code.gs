@@ -72,7 +72,7 @@ function getProduits() {
 
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    var actif = String(row[5]).toUpperCase().trim();
+    var actif = String(row[6]).toUpperCase().trim();
 
     if (actif === "OUI") {
       produits.push({
@@ -81,6 +81,7 @@ function getProduits() {
         prix: Number(row[2]),
         categorie: row[3],
         image: convertirLienDrive(String(row[4])),
+        description_longue: row[5] || "",
       });
     }
   }
