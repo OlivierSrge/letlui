@@ -324,12 +324,17 @@ function afficherConfirmation(data) {
     '<div class="confirmation">' +
       '<div class="confirmation-icon">&#10003;</div>' +
       '<h1>Réservation confirmée !</h1>' +
-      '<p>Merci pour votre confiance ! Vous allez recevoir les instructions de paiement par email très prochainement. Notre équipe vous contactera pour les détails de votre prestation.</p>' +
+      '<p>Merci pour votre confiance ! Notre équipe vous contactera pour les détails de votre prestation.</p>' +
       '<div class="recap-box">' +
-        '<div class="recap-ligne"><span>Produit</span><span>' + produitActuel.nom + '</span></div>' +
+        '<div class="recap-ligne"><span>Pack</span><span>' + produitActuel.nom + '</span></div>' +
         '<div class="recap-ligne"><span>Client</span><span>' + data.client + '</span></div>' +
         (data.code_promo ? '<div class="recap-ligne"><span>Code promo</span><span>' + data.code_promo + ' (-' + data.reduction + '%)</span></div>' : '') +
         '<div class="recap-ligne"><span>Montant à payer</span><span>' + formatPrix(data.montant_final) + '</span></div>' +
+      '</div>' +
+      '<div class="recap-box" style="text-align:center; margin-bottom:2rem;">' +
+        '<p style="font-size:0.85rem; color:#888; margin-bottom:0.75rem;">Pour finaliser, envoyez le montant par Orange Money au :</p>' +
+        '<p style="font-size:1.4rem; font-weight:800; letter-spacing:1px; margin-bottom:0.25rem;">6 93 40 79 64</p>' +
+        '<p style="font-size:0.9rem; font-weight:600;">Olivier SERGE</p>' +
       '</div>' +
       '<a href="index.html" class="btn-retour-accueil">Voir nos autres packs</a>' +
     '</div>';
