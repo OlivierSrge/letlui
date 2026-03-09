@@ -118,6 +118,7 @@ async function chargerCatalogue() {
 var produitActuel = null;
 var codePromoValide = null;
 var reductionPourcent = 0;
+var quantiteSelectionnee = 1;
 
 async function chargerProduit() {
   var container = document.getElementById("produit-detail");
@@ -191,6 +192,15 @@ async function chargerProduit() {
             '</div>' +
 
             '<div class="form-group">' +
+              '<label for="quantite">Quantité</label>' +
+              '<div class="quantite-zone">' +
+                '<button type="button" class="btn-qty" id="btn-qty-moins">−</button>' +
+                '<input type="number" id="quantite" value="1" min="1" max="10" readonly>' +
+                '<button type="button" class="btn-qty" id="btn-qty-plus">+</button>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="form-group">' +
               '<label for="code_promo">Code promo</label>' +
               '<div class="promo-zone">' +
                 '<input type="text" id="code_promo" placeholder="Entrer un code">' +
@@ -216,6 +226,21 @@ async function chargerProduit() {
     document.getElementById("btn-commander").addEventListener("click", passerCommande);
     document.getElementById("code_promo").addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); verifierCode(); }
+    });
+
+    document.getElementById("btn-qty-moins").addEventListener("click", function () {
+      if (quantiteSelectionnee > 1) {
+        quantiteSelectionnee--;
+        document.getElementById("quantite").value = quantiteSelectionnee;
+        majPrixRecap();
+      }
+    });
+    document.getElementById("btn-qty-plus").addEventListener("click", function () {
+      if (quantiteSelectionnee < 10) {
+        quantiteSelectionnee++;
+        document.getElementById("quantite").value = quantiteSelectionnee;
+        majPrixRecap();
+      }
     });
 
   } catch (err) {
@@ -266,17 +291,22 @@ function majPrixRecap() {
   var recap = document.getElementById("prix-recap");
   if (!produitActuel || !recap) return;
 
-  var prix = produitActuel.prix;
+  var prixUnitaire = produitActuel.prix;
+  var sousTotal = prixUnitaire * quantiteSelectionnee;
+
   if (reductionPourcent > 0) {
-    var reduction = Math.round(prix * reductionPourcent / 100);
-    var total = prix - reduction;
+    var reduction = Math.round(sousTotal * reductionPourcent / 100);
+    var total = sousTotal - reduction;
     recap.innerHTML =
-      '<div class="prix-ligne barre"><span>Prix original</span><span>' + formatPrix(prix) + '</span></div>' +
+      (quantiteSelectionnee > 1 ? '<div class="prix-ligne"><span>Prix unitaire</span><span>' + formatPrix(prixUnitaire) + '</span></div>' +
+      '<div class="prix-ligne"><span>Sous-total (×' + quantiteSelectionnee + ')</span><span>' + formatPrix(sousTotal) + '</span></div>' : '') +
+      '<div class="prix-ligne barre"><span>Prix original</span><span>' + formatPrix(sousTotal) + '</span></div>' +
       '<div class="prix-ligne reduction"><span>Réduction (' + reductionPourcent + '%)</span><span>-' + formatPrix(reduction) + '</span></div>' +
       '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(total) + '</span></div>';
   } else {
     recap.innerHTML =
-      '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(prix) + '</span></div>';
+      (quantiteSelectionnee > 1 ? '<div class="prix-ligne"><span>Prix unitaire</span><span>' + formatPrix(prixUnitaire) + '</span></div>' : '') +
+      '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(sousTotal) + '</span></div>';
   }
 }
 
@@ -303,6 +333,7 @@ async function passerCommande() {
       email_client: email,
       produit_nom: produitActuel.nom,
       prix: produitActuel.prix,
+      quantite: quantiteSelectionnee,
       code_promo: codePromoValide || "",
     });
 
@@ -331,6 +362,7 @@ function afficherConfirmation(data) {
       '<div class="recap-box">' +
         '<div class="recap-ligne"><span>Pack</span><span>' + produitActuel.nom + '</span></div>' +
         '<div class="recap-ligne"><span>Client</span><span>' + data.client + '</span></div>' +
+        (data.quantite > 1 ? '<div class="recap-ligne"><span>Quantité</span><span>' + data.quantite + '</span></div>' : '') +
         (data.code_promo ? '<div class="recap-ligne"><span>Code promo</span><span>' + data.code_promo + ' (-' + data.reduction + '%)</span></div>' : '') +
         '<div class="recap-ligne"><span>Montant à payer</span><span>' + formatPrix(data.montant_final) + '</span></div>' +
       '</div>' +

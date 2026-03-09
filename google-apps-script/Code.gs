@@ -143,6 +143,8 @@ function creerCommande(data) {
   }
 
   var prixOriginal = Number(data.prix);
+  var quantite = Math.max(1, parseInt(data.quantite) || 1);
+  var prixTotal = prixOriginal * quantite;
   var codePromo = data.code_promo ? data.code_promo.trim().toUpperCase() : "";
   var nomAffilie = "";
   var emailAffilie = "";
@@ -170,8 +172,8 @@ function creerCommande(data) {
   }
 
   // Calculer le montant final
-  var reduction = Math.round(prixOriginal * reductionPourcent / 100);
-  var montantFinal = prixOriginal - reduction;
+  var reduction = Math.round(prixTotal * reductionPourcent / 100);
+  var montantFinal = prixTotal - reduction;
   var commission = Math.round(montantFinal * commissionPourcent / 100);
 
   // Date formatée
@@ -186,20 +188,22 @@ function creerCommande(data) {
     data.tel_client.trim(),
     data.email_client.trim(),
     data.produit_nom,
-    prixOriginal,
+    prixTotal,
     codePromo || "",
     nomAffilie || "",
     reductionPourcent || 0,
     montantFinal,
     "",  // Lien Orange Money (à remplir par le vendeur)
     "En attente",
-    "",  // Notes
+    quantite > 1 ? "Qté : " + quantite + " | Prix unitaire : " + formatFCFA(prixOriginal) + " FCFA" : "",
   ]);
 
   // Envoyer email au vendeur
   envoyerEmailVendeur({
     produit: data.produit_nom,
     prix_original: prixOriginal,
+    prix_total: prixTotal,
+    quantite: quantite,
     montant_final: montantFinal,
     reduction_pourcent: reductionPourcent,
     nom_client: data.nom_client.trim(),
@@ -226,6 +230,7 @@ function creerCommande(data) {
     message: "Commande enregistrée avec succès",
     client: data.nom_client.trim(),
     montant_final: montantFinal,
+    quantite: quantite,
     code_promo: codePromo || null,
     reduction: reductionPourcent,
   };
@@ -240,11 +245,16 @@ function envoyerEmailVendeur(info) {
   var corps =
     "Nouvelle commande reçue !\n\n" +
     "━━━━━━━━━━━━━━━━━━━━\n" +
-    "PRODUIT : " + info.produit + "\n" +
-    "MONTANT : " + formatFCFA(info.montant_final) + " FCFA";
+    "PRODUIT : " + info.produit + "\n";
+
+  if (info.quantite > 1) {
+    corps += "QUANTITÉ : " + info.quantite + " × " + formatFCFA(info.prix_original) + " FCFA = " + formatFCFA(info.prix_total) + " FCFA\n";
+  }
+
+  corps += "MONTANT : " + formatFCFA(info.montant_final) + " FCFA";
 
   if (info.reduction_pourcent > 0) {
-    corps += " (réduction " + info.reduction_pourcent + "% appliquée, prix original : " + formatFCFA(info.prix_original) + " FCFA)";
+    corps += " (réduction " + info.reduction_pourcent + "% appliquée)";
   }
 
   corps += "\n━━━━━━━━━━━━━━━━━━━━\n\n";

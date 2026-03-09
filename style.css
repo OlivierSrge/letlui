@@ -687,6 +687,56 @@ img {
   color: var(--gris-300);
 }
 
+/* --- Sélecteur de quantité --- */
+.quantite-zone {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: fit-content;
+  border: 1.5px solid var(--gris-300);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.btn-qty {
+  width: 40px;
+  height: 44px;
+  background: var(--gris-100);
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--noir);
+  cursor: pointer;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-qty:hover {
+  background: var(--gris-300);
+}
+
+.quantite-zone input[type="number"] {
+  width: 56px;
+  height: 44px;
+  text-align: center;
+  border: none;
+  border-left: 1.5px solid var(--gris-300);
+  border-right: 1.5px solid var(--gris-300);
+  border-radius: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--noir);
+  background: var(--blanc);
+  box-shadow: none;
+  padding: 0;
+  -moz-appearance: textfield;
+}
+
+.quantite-zone input[type="number"]::-webkit-outer-spin-button,
+.quantite-zone input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
 /* --- Zone code promo --- */
 .promo-zone {
   display: flex;
