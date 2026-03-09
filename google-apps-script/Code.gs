@@ -45,6 +45,9 @@ function publierProduits() {
     return;
   }
 
+  // Vider le cache pour forcer une lecture fraîche du Sheet
+  CacheService.getScriptCache().remove("produits_v1");
+
   // Lire les produits depuis le Sheet
   var resultat = getProduits();
   var contenu = JSON.stringify(resultat, null, 2);
