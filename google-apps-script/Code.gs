@@ -62,12 +62,17 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET PRODUITS — Retourne tous les produits actifs
+// GET PRODUITS — Retourne tous les produits actifs (avec cache 5 min)
 // ============================================================
 function getProduits() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get("produits_v1");
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ONGLET_PRODUITS);
   var data = sheet.getDataRange().getValues();
-  var headers = data[0];
   var produits = [];
 
   for (var i = 1; i < data.length; i++) {
@@ -86,7 +91,9 @@ function getProduits() {
     }
   }
 
-  return { produits: produits };
+  var resultat = { produits: produits };
+  try { cache.put("produits_v1", JSON.stringify(resultat), 300); } catch (e) {}
+  return resultat;
 }
 
 // ============================================================

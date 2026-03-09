@@ -2,6 +2,40 @@
 // L ET LUI SIGNATURE — Logique frontend
 // ============================================================
 
+// --- Cache produits (localStorage) ---
+
+var CACHE_KEY = "letlui_produits";
+var CACHE_DUREE = 5 * 60 * 1000; // 5 minutes
+
+async function getProduitsCaches() {
+  var cache = null;
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (Date.now() - parsed.ts < CACHE_DUREE) {
+        cache = parsed.produits;
+      }
+    }
+  } catch (e) {}
+
+  if (cache) {
+    // Cache valide → retourner immédiatement + rafraîchir en arrière-plan
+    appelerAPI({ action: "produits" }).then(function (data) {
+      if (data.produits) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: data.produits, ts: Date.now() })); } catch (e) {}
+      }
+    }).catch(function () {});
+    return cache;
+  }
+
+  // Pas de cache valide → fetch + stocker
+  var data = await appelerAPI({ action: "produits" });
+  var produits = data.produits || [];
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: produits, ts: Date.now() })); } catch (e) {}
+  return produits;
+}
+
 // --- Utilitaires ---
 
 function formatPrix(montant) {
@@ -43,8 +77,7 @@ async function chargerCatalogue() {
   if (!grille || !filtresContainer) return;
 
   try {
-    var data = await appelerAPI({ action: "produits" });
-    var produits = data.produits || [];
+    var produits = await getProduitsCaches();
 
     // Extraire les catégories uniques
     var categories = [];
@@ -131,8 +164,7 @@ async function chargerProduit() {
   }
 
   try {
-    var data = await appelerAPI({ action: "produits" });
-    var produits = data.produits || [];
+    var produits = await getProduitsCaches();
     var produit = produits[parseInt(id)];
 
     if (!produit) {
