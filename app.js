@@ -8,28 +8,34 @@ var CACHE_KEY = "letlui_produits";
 var CACHE_DUREE = 5 * 60 * 1000; // 5 minutes
 
 async function getProduitsCaches() {
-  var cache = null;
+  // 1. Cache localStorage valide → retour immédiat + refresh silencieux
   try {
     var raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       var parsed = JSON.parse(raw);
       if (Date.now() - parsed.ts < CACHE_DUREE) {
-        cache = parsed.produits;
+        fetch("/produits.json").then(function(r) { return r.json(); }).then(function(data) {
+          if (data.produits) {
+            try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: data.produits, ts: Date.now() })); } catch(e) {}
+          }
+        }).catch(function() {});
+        return parsed.produits;
       }
     }
   } catch (e) {}
 
-  if (cache) {
-    // Cache valide → retourner immédiatement + rafraîchir en arrière-plan
-    appelerAPI({ action: "produits" }).then(function (data) {
-      if (data.produits) {
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: data.produits, ts: Date.now() })); } catch (e) {}
-      }
-    }).catch(function () {});
-    return cache;
-  }
+  // 2. Pas de cache → produits.json (Netlify CDN, rapide)
+  try {
+    var resp = await fetch("/produits.json");
+    if (resp.ok) {
+      var data = await resp.json();
+      var produits = data.produits || [];
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: produits, ts: Date.now() })); } catch (e) {}
+      return produits;
+    }
+  } catch (e) {}
 
-  // Pas de cache valide → fetch + stocker
+  // 3. Fallback → Apps Script API
   var data = await appelerAPI({ action: "produits" });
   var produits = data.produits || [];
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: produits, ts: Date.now() })); } catch (e) {}

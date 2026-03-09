@@ -10,10 +10,79 @@ var EMAIL_VENDEUR = "olivierfinestone@gmail.com";
 var ORANGE_MONEY_NUMERO = "6 93 40 79 64";
 var ORANGE_MONEY_NOM = "Olivier SERGE";
 
+// --- GitHub (pour publier produits.json) ---
+// Token à stocker dans : Extensions > Apps Script > Paramètres du projet > Propriétés de script
+// Clé : GITHUB_TOKEN  |  Valeur : ton token GitHub (scope: repo)
+var GITHUB_OWNER = "OlivierSrge";
+var GITHUB_REPO = "letlui";
+var GITHUB_FILE = "produits.json";
+var GITHUB_BRANCH = "main";
+
 // --- Noms des onglets ---
 var ONGLET_PRODUITS = "Produits";
 var ONGLET_AFFILIES = "Affiliés_Codes";
 var ONGLET_COMMANDES = "Commandes";
+
+// ============================================================
+// MENU PERSONNALISÉ — Affiché dans Google Sheets
+// ============================================================
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("L et Lui")
+    .addItem("Mettre à jour le site", "publierProduits")
+    .addToUi();
+}
+
+// ============================================================
+// PUBLIER PRODUITS — Pousse produits.json sur GitHub
+// ============================================================
+function publierProduits() {
+  var ui = SpreadsheetApp.getUi();
+
+  var token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN");
+  if (!token) {
+    ui.alert("Token GitHub manquant", "Va dans Extensions > Apps Script > Paramètres du projet > Propriétés de script\nAjoute : GITHUB_TOKEN = ton_token", ui.ButtonSet.OK);
+    return;
+  }
+
+  // Lire les produits depuis le Sheet
+  var resultat = getProduits();
+  var contenu = JSON.stringify(resultat, null, 2);
+  var contenuBase64 = Utilities.base64Encode(Utilities.newBlob(contenu).getBytes());
+
+  // Récupérer le SHA du fichier actuel (nécessaire pour le mettre à jour)
+  var urlGet = "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/contents/" + GITHUB_FILE + "?ref=" + GITHUB_BRANCH;
+  var respGet = UrlFetchApp.fetch(urlGet, {
+    headers: { "Authorization": "token " + token, "Accept": "application/vnd.github.v3+json" },
+    muteHttpExceptions: true,
+  });
+
+  var sha = "";
+  if (respGet.getResponseCode() === 200) {
+    sha = JSON.parse(respGet.getContentText()).sha;
+  }
+
+  // Pousser le fichier mis à jour
+  var payload = {
+    message: "MAJ produits depuis Google Sheets — " + Utilities.formatDate(new Date(), "Africa/Douala", "yyyy-MM-dd HH:mm"),
+    content: contenuBase64,
+    branch: GITHUB_BRANCH,
+  };
+  if (sha) payload.sha = sha;
+
+  var respPut = UrlFetchApp.fetch("https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/contents/" + GITHUB_FILE, {
+    method: "put",
+    headers: { "Authorization": "token " + token, "Accept": "application/vnd.github.v3+json", "Content-Type": "application/json" },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  });
+
+  if (respPut.getResponseCode() === 200 || respPut.getResponseCode() === 201) {
+    ui.alert("Succès !", "Le site est en cours de mise à jour (30 secondes).\n\n" + resultat.produits.length + " produits publiés.", ui.ButtonSet.OK);
+  } else {
+    ui.alert("Erreur", "Code " + respPut.getResponseCode() + "\n" + respPut.getContentText(), ui.ButtonSet.OK);
+  }
+}
 
 // ============================================================
 // POINT D'ENTRÉE — Requêtes GET
