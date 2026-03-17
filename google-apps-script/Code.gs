@@ -422,7 +422,7 @@ function convertirLienDrive(url) {
   }
 
   if (fileId) {
-    return "https://lh3.googleusercontent.com/d/" + fileId;
+    return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w800";
   }
 
   // Déjà au bon format ou URL externe
