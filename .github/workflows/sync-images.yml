@@ -1,0 +1,113 @@
+name: Sync product images to Netlify CDN
+
+on:
+  push:
+    branches: [main]
+    paths: [produits.json]
+
+jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    # Eviter une boucle infinie : ne pas relancer si c'est ce workflow qui a committé
+    if: "!contains(github.event.head_commit.message, '[images-sync]')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
+      - name: Download and optimize Google Drive images
+        run: |
+          python3 << 'EOF'
+          import json, re, subprocess, os, sys
+
+          with open('produits.json') as f:
+              data = json.load(f)
+
+          def sanitize(nom):
+              nom = re.sub(r'[^\w\s-]', '', nom, flags=re.UNICODE)
+              nom = re.sub(r'\s+', '-', nom.strip())
+              return nom[:40].lower().rstrip('-')
+
+          os.makedirs('images', exist_ok=True)
+          changed = False
+
+          for i, p in enumerate(data['produits']):
+              img = p.get('image', '')
+
+              # Skip si déjà une URL locale
+              if not img or ('drive.google.com' not in img and 'lh3.googleusercontent' not in img):
+                  continue
+
+              # Extraire le File ID Google Drive
+              m = re.search(r'id=([^&\s/]+)', img)
+              if not m:
+                  print(f'[{i:02d}] Impossible d\'extraire le File ID depuis: {img}')
+                  continue
+
+              file_id = m.group(1)
+              filename = f"{i:02d}-{sanitize(p['nom'])}.jpg"
+              filepath = f"images/{filename}"
+
+              # Ne pas re-télécharger si l'image existe déjà
+              if os.path.exists(filepath) and os.path.getsize(filepath) > 10000:
+                  print(f'[{i:02d}] Déjà présente: {filename}')
+                  p['image'] = f'/images/{filename}'
+                  changed = True
+                  continue
+
+              print(f'[{i:02d}] Téléchargement: {p["nom"][:40]}...')
+              url = f'https://drive.google.com/uc?export=download&id={file_id}'
+              r = subprocess.run(
+                  ['curl', '-sL', '--max-time', '90', '-A',
+                   'Mozilla/5.0 (compatible; Googlebot/2.1)',
+                   url, '-o', filepath],
+                  capture_output=True
+              )
+
+              if r.returncode != 0 or not os.path.exists(filepath) or os.path.getsize(filepath) < 10000:
+                  print(f'  ✗ Échec (code {r.returncode})')
+                  if os.path.exists(filepath):
+                      os.remove(filepath)
+                  continue
+
+              # Convertir et optimiser en JPEG 1200px max
+              conv = subprocess.run(
+                  ['convert', filepath, '-resize', '1200x1200>', '-quality', '82', filepath],
+                  capture_output=True
+              )
+              if conv.returncode != 0:
+                  print(f'  ⚠ Conversion échouée, conservation du fichier original')
+
+              size_kb = os.path.getsize(filepath) // 1024
+              print(f'  ✓ {filename} ({size_kb}KB)')
+              p['image'] = f'/images/{filename}'
+              changed = True
+
+          if changed:
+              with open('produits.json', 'w') as f:
+                  json.dump(data, f, ensure_ascii=False, indent=2)
+              print('\nproduits.json mis à jour avec les chemins locaux.')
+              sys.exit(0)
+          else:
+              print('\nAucune URL Google Drive trouvée, rien à faire.')
+              sys.exit(0)
+          EOF
+
+      - name: Commit and push if images were added
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add images/ produits.json
+          if git diff --cached --quiet; then
+            echo "Aucun changement à committer."
+          else
+            COUNT=$(git diff --cached --name-only | grep -c "^images/" || true)
+            git commit -m "chore: sync ${COUNT} image(s) vers Netlify CDN [images-sync]"
+            git push
+            echo "Images synchronisées et poussées."
+          fi
