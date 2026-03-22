@@ -29,7 +29,11 @@ jobs:
               data = json.load(f)
 
           def sanitize(nom):
-              nom = re.sub(r'[^\w\s-]', '', nom, flags=re.UNICODE)
+              import unicodedata
+              # Supprimer les accents (NFD → garder seulement les caractères non-diacritiques)
+              nfkd = unicodedata.normalize('NFKD', nom)
+              nom = ''.join(c for c in nfkd if unicodedata.category(c) != 'Mn')
+              nom = re.sub(r'[^\w\s-]', '', nom)
               nom = re.sub(r'\s+', '-', nom.strip())
               return nom[:40].lower().rstrip('-')
 
