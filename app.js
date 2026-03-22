@@ -265,6 +265,16 @@ async function chargerProduit() {
     document.getElementById("code_promo").addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); verifierCode(); }
     });
+    document.getElementById("code_promo").addEventListener("input", function () {
+      // Si l'utilisateur modifie le champ après validation, on réinitialise
+      if (codePromoValide !== null) {
+        codePromoValide = null;
+        reductionPourcent = 0;
+        document.getElementById("promo-msg").textContent = "";
+        document.getElementById("promo-msg").className = "promo-msg";
+        majPrixRecap();
+      }
+    });
 
     document.getElementById("btn-qty-moins").addEventListener("click", function () {
       if (quantiteSelectionnee > 1) {
