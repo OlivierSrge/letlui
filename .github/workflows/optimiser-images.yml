@@ -1,0 +1,67 @@
+# ============================================================
+# L et Lui Signature — Optimisation automatique des images
+# ============================================================
+# Se déclenche à chaque push sur main si des images ont changé.
+# Redimensionne à 700px max + qualité JPEG 75% → ~60% plus léger.
+# Commit automatiquement les images compressées si nécessaire.
+# ============================================================
+
+name: Optimiser les images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "images/**"
+
+jobs:
+  optimiser:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Installer ImageMagick
+        run: sudo apt-get install -y imagemagick
+
+      - name: Compresser les images modifiées
+        run: |
+          echo "=== Images dans /images/ ==="
+          ls -lh images/*.jpg images/*.jpeg images/*.png 2>/dev/null || echo "Aucune image trouvée"
+
+          MODIFIE=0
+          for img in images/*.jpg images/*.jpeg; do
+            [ -f "$img" ] || continue
+
+            # Taille avant
+            AVANT=$(stat -c%s "$img")
+
+            # Redimensionner (max 700px sur le côté le plus long) + qualité 75
+            mogrify -resize "700x700>" -quality 75 "$img"
+
+            # Taille après
+            APRES=$(stat -c%s "$img")
+
+            if [ "$APRES" -lt "$AVANT" ]; then
+              GAIN=$(( (AVANT - APRES) * 100 / AVANT ))
+              echo "✓ $img : $(( AVANT / 1024 ))KB → $(( APRES / 1024 ))KB (-${GAIN}%)"
+              MODIFIE=1
+            else
+              echo "~ $img : déjà optimisée, ignorée"
+            fi
+          done
+
+          echo "MODIFIE=$MODIFIE" >> $GITHUB_ENV
+
+      - name: Commit des images optimisées
+        if: env.MODIFIE == '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add images/
+          git commit -m "🗜️ Optimisation automatique des images [skip ci]"
+          git push
