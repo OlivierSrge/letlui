@@ -113,10 +113,14 @@ async function chargerCatalogue() {
         produitsFiltrés.forEach(function (p, index) {
           // Trouver l'index original dans la liste complète
           var origIndex = produits.indexOf(p);
+          // Les 3 premières cartes visibles chargées en priorité (au-dessus de la ligne de flottaison)
+          var imgAttrs = index < 3
+            ? 'loading="eager" fetchpriority="high"'
+            : 'loading="lazy"';
           html +=
             '<a href="produit.html?id=' + origIndex + '" class="produit-card" style="animation-delay:' + (index * 0.08) + 's">' +
               '<div class="produit-card-img-wrap">' +
-                '<img class="produit-card-img" src="' + (p.image || IMG_PLACEHOLDER) + '" alt="' + p.nom + '" loading="lazy" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'">' +
+                '<img class="produit-card-img" src="' + (p.image || IMG_PLACEHOLDER) + '" alt="' + p.nom + '" ' + imgAttrs + ' onerror="this.src=\'' + IMG_PLACEHOLDER + '\'">' +
                 '<div class="produit-card-overlay"><span>Voir le pack</span></div>' +
               '</div>' +
               '<div class="produit-card-body">' +

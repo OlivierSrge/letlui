@@ -1,0 +1,28 @@
+# ============================================================
+# L et Lui Signature — Configuration Netlify
+# ============================================================
+
+# Cache long terme pour les assets statiques (images, CSS, JS)
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+  for = "/produits.json"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
+
+# Compression activée automatiquement par Netlify (gzip/brotli)
+[build]
+  publish = "."
