@@ -2,6 +2,10 @@
 # L et Lui Signature — Configuration Netlify
 # ============================================================
 
+# Netlify Image CDN — transformation WebP automatique pour images externes
+[images]
+  remote_images = ["https://lh3\\.googleusercontent\\.com/.*"]
+
 # Cache long terme pour les assets statiques (images, CSS, JS)
 [[headers]]
   for = "/images/*"
@@ -22,6 +26,12 @@
   for = "/produits.json"
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
+
+# HTML : toujours frais (le shell HTML est léger, les données viennent du cache JS)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 # Compression activée automatiquement par Netlify (gzip/brotli)
 [build]

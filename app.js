@@ -73,6 +73,12 @@ async function posterAPI(data) {
 // Placeholder SVG pour images manquantes
 var IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500' fill='none'%3E%3Crect width='400' height='500' fill='%23F0F0F0'/%3E%3Cpath d='M180 220h40v60h-40z' fill='%23DDD'/%3E%3Ccircle cx='200' cy='200' r='20' fill='%23DDD'/%3E%3C/svg%3E";
 
+// Netlify Image CDN — transforme les images en WebP redimensionné
+function netlifyImg(url, largeur) {
+  if (!url || url.startsWith('data:')) return url;
+  return '/.netlify/images?url=' + encodeURIComponent(url) + '&w=' + (largeur || 800) + '&fm=webp&q=82';
+}
+
 // ============================================================
 // PAGE CATALOGUE (index.html)
 // ============================================================
@@ -120,7 +126,7 @@ async function chargerCatalogue() {
           html +=
             '<a href="produit.html?id=' + origIndex + '" class="produit-card" style="animation-delay:' + (index * 0.08) + 's">' +
               '<div class="produit-card-img-wrap">' +
-                '<img class="produit-card-img" src="' + (p.image || IMG_PLACEHOLDER) + '" alt="' + p.nom + '" ' + imgAttrs + ' onerror="this.src=\'' + IMG_PLACEHOLDER + '\'">' +
+                '<img class="produit-card-img img-chargement" src="' + netlifyImg(p.image || IMG_PLACEHOLDER, 600) + '" alt="' + p.nom + '" ' + imgAttrs + ' onload="this.classList.remove(\'img-chargement\')" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'; this.classList.remove(\'img-chargement\')">' +
                 '<div class="produit-card-overlay"><span>Voir le pack</span></div>' +
               '</div>' +
               '<div class="produit-card-body">' +
@@ -191,7 +197,7 @@ async function chargerProduit() {
       '<div class="produit-layout">' +
         // Colonne image
         '<div class="produit-galerie">' +
-          '<img class="produit-detail-img" src="' + (produit.image || IMG_PLACEHOLDER) + '" alt="' + produit.nom + '" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'">' +
+          '<img class="produit-detail-img img-chargement" src="' + netlifyImg(produit.image || IMG_PLACEHOLDER, 900) + '" alt="' + produit.nom + '" loading="eager" onload="this.classList.remove(\'img-chargement\')" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'; this.classList.remove(\'img-chargement\')">' +
         '</div>' +
 
         // Colonne infos
