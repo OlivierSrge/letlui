@@ -35,6 +35,7 @@ function onOpen() {
 
 // ============================================================
 // PUBLIER PRODUITS — Pousse produits.json sur GitHub
+// Migre automatiquement les URLs Drive vers des chemins locaux
 // ============================================================
 function publierProduits() {
   var ui = SpreadsheetApp.getUi();
@@ -48,12 +49,58 @@ function publierProduits() {
   // Vider le cache pour forcer une lecture fraîche du Sheet
   CacheService.getScriptCache().remove("produits_v1");
 
-  // Lire les produits depuis le Sheet
-  var resultat = getProduits();
+  // Lire le Sheet et migrer les images Drive → GitHub
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ONGLET_PRODUITS);
+  var data = sheet.getDataRange().getValues();
+  var produits = [];
+  var imagesUploades = 0;
+  var imagesEchecs = [];
+  var indexActif = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var actif = String(row[6]).toUpperCase().trim();
+    if (actif !== "OUI") continue;
+
+    var nom = row[0];
+    var imageUrl = String(row[4]).trim();
+    var cheminLocal = imageUrl;
+
+    // Si c'est une URL Drive (pas encore migrée), on l'uploade sur GitHub
+    var fileId = extraireDriveFileId(imageUrl);
+    if (fileId) {
+      var nomFichier = genererNomFichier(indexActif, nom);
+      cheminLocal = "/images/" + nomFichier;
+
+      var success = uploadOuReutiliserImage(fileId, nomFichier, token);
+      if (success) {
+        // Mettre à jour la cellule du Sheet avec le chemin local
+        sheet.getRange(i + 1, 5).setValue(cheminLocal);
+        imagesUploades++;
+      } else {
+        // En cas d'échec, utiliser le thumbnail Drive comme fallback
+        cheminLocal = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w800";
+        imagesEchecs.push(nom);
+      }
+    }
+
+    produits.push({
+      nom: nom,
+      description: row[1],
+      prix: Number(row[2]),
+      categorie: row[3],
+      image: cheminLocal,
+      description_longue: row[5] || "",
+    });
+
+    indexActif++;
+  }
+
+  // Pousser produits.json sur GitHub
+  var resultat = { produits: produits };
   var contenu = JSON.stringify(resultat, null, 2);
   var contenuBase64 = Utilities.base64Encode(Utilities.newBlob(contenu).getBytes());
 
-  // Récupérer le SHA du fichier actuel (nécessaire pour le mettre à jour)
   var urlGet = "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/contents/" + GITHUB_FILE + "?ref=" + GITHUB_BRANCH;
   var respGet = UrlFetchApp.fetch(urlGet, {
     headers: { "Authorization": "token " + token, "Accept": "application/vnd.github.v3+json" },
@@ -65,7 +112,6 @@ function publierProduits() {
     sha = JSON.parse(respGet.getContentText()).sha;
   }
 
-  // Pousser le fichier mis à jour
   var payload = {
     message: "MAJ produits depuis Google Sheets — " + Utilities.formatDate(new Date(), "Africa/Douala", "yyyy-MM-dd HH:mm"),
     content: contenuBase64,
@@ -81,10 +127,89 @@ function publierProduits() {
   });
 
   if (respPut.getResponseCode() === 200 || respPut.getResponseCode() === 201) {
-    ui.alert("Succès !", "Le site est en cours de mise à jour (30 secondes).\n\n" + resultat.produits.length + " produits publiés.", ui.ButtonSet.OK);
+    var msg = "Le site est en cours de mise à jour (30 secondes).\n\n" + produits.length + " produits publiés.";
+    if (imagesUploades > 0) msg += "\n" + imagesUploades + " image(s) migrée(s) vers Netlify.";
+    if (imagesEchecs.length > 0) msg += "\n⚠️ Échec image(s) : " + imagesEchecs.join(", ");
+    ui.alert("Succès !", msg, ui.ButtonSet.OK);
   } else {
     ui.alert("Erreur", "Code " + respPut.getResponseCode() + "\n" + respPut.getContentText(), ui.ButtonSet.OK);
   }
+}
+
+// ============================================================
+// UPLOAD IMAGE — Vérifie si elle existe sur GitHub, sinon uploade
+// ============================================================
+function uploadOuReutiliserImage(fileId, nomFichier, token) {
+  // 1. Vérifier si l'image existe déjà sur GitHub (évite les re-uploads inutiles)
+  var urlCheck = "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO +
+                 "/contents/images/" + nomFichier + "?ref=" + GITHUB_BRANCH;
+  var checkResp = UrlFetchApp.fetch(urlCheck, {
+    headers: { "Authorization": "token " + token, "Accept": "application/vnd.github.v3+json" },
+    muteHttpExceptions: true,
+  });
+
+  if (checkResp.getResponseCode() === 200) {
+    // Image déjà présente sur GitHub — rien à faire
+    return true;
+  }
+
+  // 2. Télécharger l'image depuis Google Drive (accès direct, pas de lien public requis)
+  var imageBytes;
+  try {
+    var blob = DriveApp.getFileById(fileId).getBlob();
+    imageBytes = blob.getBytes();
+  } catch (e) {
+    Logger.log("Erreur accès Drive " + fileId + " : " + e.message);
+    return false;
+  }
+
+  // 3. Uploader vers GitHub dans le dossier /images/
+  var uploadPayload = {
+    message: "Image ajoutée automatiquement : " + nomFichier,
+    content: Utilities.base64Encode(imageBytes),
+    branch: GITHUB_BRANCH,
+  };
+
+  var putResp = UrlFetchApp.fetch(
+    "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/contents/images/" + nomFichier,
+    {
+      method: "put",
+      headers: {
+        "Authorization": "token " + token,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      payload: JSON.stringify(uploadPayload),
+      muteHttpExceptions: true,
+    }
+  );
+
+  return putResp.getResponseCode() === 200 || putResp.getResponseCode() === 201;
+}
+
+// ============================================================
+// UTILITAIRES — Images
+// ============================================================
+
+// Extraire le file ID d'une URL Google Drive
+function extraireDriveFileId(url) {
+  if (!url) return null;
+  var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  match = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  return null;
+}
+
+// Générer un nom de fichier local à partir de l'index et du nom produit
+function genererNomFichier(index, nom) {
+  var prefix = index < 10 ? "0" + index : "" + index;
+  var slug = nom.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")  // supprimer accents
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .substring(0, 40);
+  return prefix + "-" + slug + ".jpg";
 }
 
 // ============================================================
