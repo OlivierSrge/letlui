@@ -124,7 +124,7 @@ async function chargerCatalogue() {
             ? 'loading="eager" fetchpriority="high"'
             : 'loading="lazy"';
           html +=
-            '<a href="produit.html?id=' + origIndex + '" class="produit-card" style="animation-delay:' + (index * 0.08) + 's">' +
+            '<a href="produit.html?id=' + origIndex + '&cat=' + encodeURIComponent(p.categorie || '') + '" class="produit-card" style="animation-delay:' + (index * 0.08) + 's">' +
               '<div class="produit-card-img-wrap">' +
                 '<img class="produit-card-img img-chargement" src="' + netlifyImg(p.image || IMG_PLACEHOLDER, 600) + '" alt="' + p.nom + '" ' + imgAttrs + ' onload="this.classList.remove(\'img-chargement\')" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'; this.classList.remove(\'img-chargement\')">' +
                 '<div class="produit-card-overlay"><span>Voir le pack</span></div>' +
@@ -140,7 +140,15 @@ async function chargerCatalogue() {
       grille.innerHTML = html;
     }
 
-    afficherProduits("tous");
+    // Appliquer le filtre depuis l'URL si présent (ex: retour depuis une page produit)
+    var catParam = getParam("cat");
+    var filtreInitial = (catParam && categories.indexOf(catParam) !== -1) ? catParam : "tous";
+    afficherProduits(filtreInitial);
+
+    // Activer visuellement le bon bouton filtre
+    document.querySelectorAll(".filtre-btn").forEach(function(b) {
+      b.classList.toggle("actif", b.dataset.categorie === filtreInitial);
+    });
 
     // Gestion des filtres
     document.querySelector(".filtres-list").addEventListener("click", function (e) {
@@ -175,7 +183,9 @@ async function chargerProduit() {
 
   var id = getParam("id");
   if (id === null) {
-    container.innerHTML = '<div class="erreur-msg"><h2>Pack introuvable</h2><p><a href="index.html" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
+    var catRetourErreur = getParam("cat") || "";
+    var urlRetourErreur = catRetourErreur ? "index.html?cat=" + encodeURIComponent(catRetourErreur) : "index.html";
+    container.innerHTML = '<div class="erreur-msg"><h2>Pack introuvable</h2><p><a href="' + urlRetourErreur + '" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
     return;
   }
 
@@ -191,8 +201,11 @@ async function chargerProduit() {
     produitActuel = produit;
     document.title = produit.nom + " — " + CONFIG.NOM_BOUTIQUE;
 
+    var catRetour = getParam("cat") || produit.categorie || "";
+    var urlRetour = catRetour ? "index.html?cat=" + encodeURIComponent(catRetour) : "index.html";
+
     container.innerHTML =
-      '<a href="index.html" class="btn-retour">&larr; Retour au catalogue</a>' +
+      '<a href="' + urlRetour + '" class="btn-retour">&larr; Retour au catalogue</a>' +
 
       '<div class="produit-layout">' +
         // Colonne image
