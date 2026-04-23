@@ -140,7 +140,7 @@ function publierProduits() {
 // UPLOAD IMAGE — Vérifie si elle existe sur GitHub, sinon uploade
 // ============================================================
 function uploadOuReutiliserImage(fileId, nomFichier, token) {
-  // 1. Vérifier si l'image existe déjà sur GitHub (évite les re-uploads inutiles)
+  // 1. Vérifier si l'image existe déjà sur GitHub — récupère le SHA pour pouvoir l'écraser
   var urlCheck = "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO +
                  "/contents/images/" + nomFichier + "?ref=" + GITHUB_BRANCH;
   var checkResp = UrlFetchApp.fetch(urlCheck, {
@@ -148,9 +148,10 @@ function uploadOuReutiliserImage(fileId, nomFichier, token) {
     muteHttpExceptions: true,
   });
 
+  var shaExistant = null;
   if (checkResp.getResponseCode() === 200) {
-    // Image déjà présente sur GitHub — rien à faire
-    return true;
+    // Image déjà présente — on récupère son SHA pour pouvoir l'écraser si nécessaire
+    shaExistant = JSON.parse(checkResp.getContentText()).sha;
   }
 
   // 2. Télécharger l'image depuis Google Drive (accès direct, pas de lien public requis)
@@ -160,15 +161,17 @@ function uploadOuReutiliserImage(fileId, nomFichier, token) {
     imageBytes = blob.getBytes();
   } catch (e) {
     Logger.log("Erreur accès Drive " + fileId + " : " + e.message);
-    return false;
+    // Si l'image existait déjà sur GitHub, on la réutilise
+    return shaExistant !== null;
   }
 
-  // 3. Uploader vers GitHub dans le dossier /images/
+  // 3. Uploader vers GitHub dans le dossier /images/ (écrase si existante)
   var uploadPayload = {
-    message: "Image ajoutée automatiquement : " + nomFichier,
+    message: "Image mise à jour automatiquement : " + nomFichier,
     content: Utilities.base64Encode(imageBytes),
     branch: GITHUB_BRANCH,
   };
+  if (shaExistant) uploadPayload.sha = shaExistant; // nécessaire pour écraser un fichier existant
 
   var putResp = UrlFetchApp.fetch(
     "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/contents/images/" + nomFichier,
