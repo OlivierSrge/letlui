@@ -397,16 +397,54 @@ async function passerCommande() {
   document.getElementById("btn-commander").disabled = true;
 
   try {
-    var data = await posterAPI({
-      action: "commande",
-      nom_client: nom,
-      tel_client: tel,
-      email_client: email,
-      produit_nom: produitActuel.nom,
-      prix: produitActuel.prix,
-      quantite: quantiteSelectionnee,
-      code_promo: codePromoValide || "",
-    });
+    // Détection Pass VIP
+    var estPassVip = (produitActuel.categorie && (produitActuel.categorie.toUpperCase().includes("PASS VIP") || produitActuel.categorie.toUpperCase() === "PASS VIP")) ||
+                     (produitActuel.nom && produitActuel.nom.toUpperCase().includes("PASS VIP"));
+
+    var data;
+
+    if (estPassVip) {
+      // Pass VIP → Appeler proxy Vercel (contourne CORS)
+      console.log("[PASS VIP] Détecté, appel proxy Vercel");
+      var proxyUrl = 'https://llui-signature-hebergements.vercel.app/api/boutique/pass-proxy';
+      
+      var response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: nom,
+          type_pass: produitActuel.nom,
+          montant: prixFinal,
+          code_promo: codePromoValide || null,
+          nom_affilie: nomAffilie || null,
+          tel: tel,
+          email: email,
+          date: new Date().toISOString()
+        })
+      });
+
+      data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur proxy');
+      }
+      
+      // Adapter la réponse du proxy au format attendu
+      data.succes = data.success || false;
+      
+    } else {
+      // Produit normal → Apps Script comme d'habitude
+      data = await posterAPI({
+        action: "commande",
+        nom_client: nom,
+        tel_client: tel,
+        email_client: email,
+        produit_nom: produitActuel.nom,
+        prix: produitActuel.prix,
+        quantite: quantiteSelectionnee,
+        code_promo: codePromoValide || "",
+      });
+    }
 
     document.getElementById("overlay").classList.remove("visible");
 
@@ -420,9 +458,8 @@ async function passerCommande() {
     document.getElementById("overlay").classList.remove("visible");
     alert("Erreur de connexion. Vérifiez votre connexion internet et réessayez.");
     document.getElementById("btn-commander").disabled = false;
-  }
 }
-
+}
 function afficherConfirmation(data) {
   var container = document.getElementById("produit-detail");
   container.innerHTML =
