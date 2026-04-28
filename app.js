@@ -405,13 +405,12 @@ async function passerCommande() {
     var montantFinal = sousTotal - reduction;
 
     // Extraire grade et durée depuis le nom du produit
-    // Ex: "Pass VIP Or — 15 jours" → grade="Or", duree="15 jours"
+    // Ex: "Pass VIP Or — 15 jours" → "Pass VIP Or — 15 jours"
     var nomProduit = produitActuel.nom || "";
-    var match = nomProduit.match(/Pass VIP\s+(\w+)\s+—\s+(.+)/i);
-    var gradePasse = match ? match[1] : "Inconnu";
-    var duree = match ? match[2] : "Inconnue";
+    var match = nomProduit.match(/Pass VIP\s+(.+)/i);
+    var typePass = match ? match[1] : "Inconnu";
 
-    console.log("[PASS VIP] Envoi proxy — montant:", montantFinal, "| type_pass:", gradePasse + " — " + duree);
+    console.log("[PASS VIP] Envoi proxy — montant:", montantFinal, "| type_pass:", typePass);
 
     // Afficher overlay
     document.getElementById("overlay").classList.add("visible");
@@ -421,15 +420,11 @@ async function passerCommande() {
       var proxyUrl = "https://llui-signature-hebergements.vercel.app/api/boutique/pass-proxy";
       
       var payload = {
-        nomClient: nom,
+        nom: nom,
         email: email,
-        telephone: tel,
-        gradePasse: gradePasse,
-        duree: duree,
-        montantFinal: montantFinal,
-        codePromo: codePromoValide || null,
-        nomAffilie: null,  // Hardcodé null (pas de système affiliés dans boutique)
-        emailAffilie: null
+        tel: tel,
+        type_pass: typePass,
+        montant: montantFinal
       };
 
       console.log("[PASS VIP] Appel proxy Vercel...");
@@ -449,8 +444,7 @@ async function passerCommande() {
         afficherConfirmationPassVIP({
           client: nom,
           email: email,
-          gradePasse: gradePasse,
-          duree: duree,
+          typePass: typePass,
           montantFinal: montantFinal,
           codePromo: codePromoValide,
           reduction: reductionPourcent
@@ -536,7 +530,7 @@ function afficherConfirmationPassVIP(data) {
       '<h1>🌟 Commande Pass VIP envoyée !</h1>' +
       '<p>Votre demande de Pass VIP a été transmise à notre équipe. Vous recevrez une confirmation par email sous 24h.</p>' +
       '<div class="recap-box">' +
-        '<div class="recap-ligne"><span>Pass VIP</span><span>' + data.gradePasse + ' — ' + data.duree + '</span></div>' +
+        '<div class="recap-ligne"><span>Pass VIP</span><span>' + data.typePass + '</span></div>' +
         '<div class="recap-ligne"><span>Client</span><span>' + data.client + '</span></div>' +
         '<div class="recap-ligne"><span>Email</span><span>' + data.email + '</span></div>' +
         (data.codePromo ? '<div class="recap-ligne"><span>Code promo</span><span>' + data.codePromo + ' (-' + data.reduction + '%)</span></div>' : '') +
