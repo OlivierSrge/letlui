@@ -404,11 +404,9 @@ async function passerCommande() {
     var reduction = reductionPourcent > 0 ? Math.round(sousTotal * reductionPourcent / 100) : 0;
     var montantFinal = sousTotal - reduction;
 
-    // Extraire grade et durée depuis le nom du produit
-    // Ex: "Pass VIP Or — 15 jours" → "Pass VIP Or — 15 jours"
-    var nomProduit = produitActuel.nom || "";
-    var match = nomProduit.match(/Pass VIP\s+(.+)/i);
-    var typePass = match ? match[1] : "Inconnu";
+    // Garder le nom complet du produit comme type_pass
+    // Ex: "Pass VIP Saphir — 30 jours"
+    var typePass = produitActuel.nom || "Pass VIP Inconnu";
 
     console.log("[PASS VIP] Envoi proxy — montant:", montantFinal, "| type_pass:", typePass);
 
