@@ -392,59 +392,93 @@ async function passerCommande() {
   if (!email) { alert("Veuillez entrer votre adresse email."); document.getElementById("email").focus(); return; }
   if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { alert("Veuillez entrer un email valide."); document.getElementById("email").focus(); return; }
 
-  // Afficher overlay
+  // ============================================================
+  // PASS VIP — Détection et flux proxy Vercel
+  // ============================================================
+  if (produitActuel.categorie === "PASS VIP") {
+    console.log("[PASS VIP] Détecté, catégorie:", produitActuel.categorie);
+    
+    // Calculer montant final (éviter prixFinal undefined)
+    var prixUnitaire = produitActuel.prix;
+    var sousTotal = prixUnitaire * quantiteSelectionnee;
+    var reduction = reductionPourcent > 0 ? Math.round(sousTotal * reductionPourcent / 100) : 0;
+    var montantFinal = sousTotal - reduction;
+
+    // Garder le nom complet du produit comme type_pass
+    // Ex: "Pass VIP Saphir — 30 jours"
+    var typePass = produitActuel.nom || "Pass VIP Inconnu";
+
+    console.log("[PASS VIP] Envoi proxy — montant:", montantFinal, "| type_pass:", typePass);
+
+    // Afficher overlay
+    document.getElementById("overlay").classList.add("visible");
+    document.getElementById("btn-commander").disabled = true;
+
+    try {
+      var proxyUrl = "https://llui-signature-hebergements.vercel.app/api/boutique/pass-proxy";
+      
+      var payload = {
+        nom: nom,
+        email: email,
+        tel: tel,
+        type_pass: typePass,
+        montant: montantFinal
+      };
+
+      console.log("[PASS VIP] Appel proxy Vercel...");
+      
+      var response = await fetch(proxyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      });
+
+      var data = await response.json();
+      
+      document.getElementById("overlay").classList.remove("visible");
+
+      if (data.success) {
+        console.log("[PASS VIP] Proxy réussi:", data);
+        afficherConfirmationPassVIP({
+          client: nom,
+          email: email,
+          typePass: typePass,
+          montantFinal: montantFinal,
+          codePromo: codePromoValide,
+          reduction: reductionPourcent
+        });
+      } else {
+        alert("Erreur : " + (data.error || "Impossible de traiter votre demande Pass VIP."));
+        document.getElementById("btn-commander").disabled = false;
+      }
+    } catch (err) {
+      console.error("[PASS VIP] Erreur proxy:", err);
+      document.getElementById("overlay").classList.remove("visible");
+      alert("Erreur de connexion. Vérifiez votre connexion internet et réessayez.");
+      document.getElementById("btn-commander").disabled = false;
+    }
+    
+    return; // Sortir — ne pas exécuter le flux normal
+  }
+  // ============================================================
+  // FIN PASS VIP
+  // ============================================================
+
+  // Flux normal (non-Pass VIP)
   document.getElementById("overlay").classList.add("visible");
   document.getElementById("btn-commander").disabled = true;
 
   try {
-    // Détection Pass VIP
-    var estPassVip = (produitActuel.categorie && (produitActuel.categorie.toUpperCase().includes("PASS VIP") || produitActuel.categorie.toUpperCase() === "PASS VIP")) ||
-                     (produitActuel.nom && produitActuel.nom.toUpperCase().includes("PASS VIP"));
-
-    var data;
-
-    if (estPassVip) {
-      // Pass VIP → Appeler proxy Vercel (contourne CORS)
-      console.log("[PASS VIP] Détecté, appel proxy Vercel");
-      var proxyUrl = 'https://llui-signature-hebergements.vercel.app/api/boutique/pass-proxy';
-      
-      var response = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nom: nom,
-          type_pass: produitActuel.nom,
-          montant: prixFinal,
-          code_promo: codePromoValide || null,
-          nom_affilie: nomAffilie || null,
-          tel: tel,
-          email: email,
-          date: new Date().toISOString()
-        })
-      });
-
-      data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur proxy');
-      }
-      
-      // Adapter la réponse du proxy au format attendu
-      data.succes = data.success || false;
-      
-    } else {
-      // Produit normal → Apps Script comme d'habitude
-      data = await posterAPI({
-        action: "commande",
-        nom_client: nom,
-        tel_client: tel,
-        email_client: email,
-        produit_nom: produitActuel.nom,
-        prix: produitActuel.prix,
-        quantite: quantiteSelectionnee,
-        code_promo: codePromoValide || "",
-      });
-    }
+    var data = await posterAPI({
+      action: "commande",
+      nom_client: nom,
+      tel_client: tel,
+      email_client: email,
+      produit_nom: produitActuel.nom,
+      prix: produitActuel.prix,
+      quantite: quantiteSelectionnee,
+      code_promo: codePromoValide || "",
+    });
 
     document.getElementById("overlay").classList.remove("visible");
 
@@ -458,8 +492,9 @@ async function passerCommande() {
     document.getElementById("overlay").classList.remove("visible");
     alert("Erreur de connexion. Vérifiez votre connexion internet et réessayez.");
     document.getElementById("btn-commander").disabled = false;
+  }
 }
-}
+
 function afficherConfirmation(data) {
   var container = document.getElementById("produit-detail");
   container.innerHTML =
@@ -485,6 +520,31 @@ function afficherConfirmation(data) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function afficherConfirmationPassVIP(data) {
+  var container = document.getElementById("produit-detail");
+  container.innerHTML =
+    '<div class="confirmation">' +
+      '<div class="confirmation-icon">&#10003;</div>' +
+      '<h1>🌟 Commande Pass VIP envoyée !</h1>' +
+      '<p>Votre demande de Pass VIP a été transmise à notre équipe. Vous recevrez une confirmation par email sous 24h.</p>' +
+      '<div class="recap-box">' +
+        '<div class="recap-ligne"><span>Pass VIP</span><span>' + data.typePass + '</span></div>' +
+        '<div class="recap-ligne"><span>Client</span><span>' + data.client + '</span></div>' +
+        '<div class="recap-ligne"><span>Email</span><span>' + data.email + '</span></div>' +
+        (data.codePromo ? '<div class="recap-ligne"><span>Code promo</span><span>' + data.codePromo + ' (-' + data.reduction + '%)</span></div>' : '') +
+        '<div class="recap-ligne"><span>Montant</span><span>' + formatPrix(data.montantFinal) + '</span></div>' +
+      '</div>' +
+      '<div class="recap-box" style="background:#FFF9E6; border-left:4px solid #D4AF37; padding:1.25rem; margin-bottom:1.5rem;">' +
+        '<p style="font-size:0.9rem; color:#666; margin-bottom:0.5rem;">⏳ <strong>Prochaine étape</strong></p>' +
+        '<p style="font-size:0.85rem; color:#888; margin:0;">Un administrateur validera votre commande et vous recevrez un email avec les instructions de paiement et d\'activation de votre Pass VIP.</p>' +
+      '</div>' +
+      '<a href="index.html" class="btn-retour-accueil">Retour au catalogue</a>' +
+    '</div>';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  console.log("✅ Commande Pass VIP envoyée à l'admin");
+}
+
 // ============================================================
 // INITIALISATION
 // ============================================================
@@ -498,3 +558,4 @@ document.addEventListener("DOMContentLoaded", function () {
     chargerProduit();
   }
 });
+
