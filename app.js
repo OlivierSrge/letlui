@@ -1,1 +1,500 @@
-404: Not Found
+// ============================================================
+// L ET LUI SIGNATURE — Logique frontend
+// ============================================================
+
+// --- Cache produits (localStorage) ---
+
+var CACHE_KEY = "letlui_produits";
+var CACHE_DUREE = 5 * 60 * 1000; // 5 minutes
+
+async function getProduitsCaches() {
+  // 1. Cache localStorage valide → retour immédiat + refresh silencieux
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (Date.now() - parsed.ts < CACHE_DUREE) {
+        fetch("/produits.json").then(function(r) { return r.json(); }).then(function(data) {
+          if (data.produits) {
+            try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: data.produits, ts: Date.now() })); } catch(e) {}
+          }
+        }).catch(function() {});
+        return parsed.produits;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Pas de cache → produits.json (Netlify CDN, rapide)
+  try {
+    var resp = await fetch("/produits.json");
+    if (resp.ok) {
+      var data = await resp.json();
+      var produits = data.produits || [];
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: produits, ts: Date.now() })); } catch (e) {}
+      return produits;
+    }
+  } catch (e) {}
+
+  // 3. Fallback → Apps Script API
+  var data = await appelerAPI({ action: "produits" });
+  var produits = data.produits || [];
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ produits: produits, ts: Date.now() })); } catch (e) {}
+  return produits;
+}
+
+// --- Utilitaires ---
+
+function formatPrix(montant) {
+  return Number(montant).toLocaleString("fr-FR") + " " + CONFIG.DEVISE;
+}
+
+function getParam(nom) {
+  return new URLSearchParams(window.location.search).get(nom);
+}
+
+async function appelerAPI(params) {
+  var url = new URL(CONFIG.API_URL);
+  Object.keys(params).forEach(function (k) {
+    url.searchParams.append(k, params[k]);
+  });
+  var resp = await fetch(url.toString());
+  return resp.json();
+}
+
+async function posterAPI(data) {
+  var resp = await fetch(CONFIG.API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(data),
+  });
+  return resp.json();
+}
+
+// Placeholder SVG pour images manquantes
+var IMG_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500' fill='none'%3E%3Crect width='400' height='500' fill='%23F0F0F0'/%3E%3Cpath d='M180 220h40v60h-40z' fill='%23DDD'/%3E%3Ccircle cx='200' cy='200' r='20' fill='%23DDD'/%3E%3C/svg%3E";
+
+// Netlify Image CDN — transforme les images en WebP redimensionné
+function netlifyImg(url, largeur) {
+  if (!url || url.startsWith('data:')) return url;
+  return '/.netlify/images?url=' + encodeURIComponent(url) + '&w=' + (largeur || 800) + '&fm=webp&q=82';
+}
+
+// ============================================================
+// PAGE CATALOGUE (index.html)
+// ============================================================
+
+async function chargerCatalogue() {
+  var grille = document.getElementById("produits-grid");
+  var filtresContainer = document.getElementById("filtres");
+  if (!grille || !filtresContainer) return;
+
+  try {
+    var produits = await getProduitsCaches();
+
+    // Extraire les catégories uniques
+    var categories = [];
+    produits.forEach(function (p) {
+      if (p.categorie && categories.indexOf(p.categorie) === -1) {
+        categories.push(p.categorie);
+      }
+    });
+
+    // Créer les boutons filtres
+    var filtresHTML = '<button class="filtre-btn actif" data-categorie="tous">Tous</button>';
+    categories.forEach(function (cat) {
+      filtresHTML += '<button class="filtre-btn" data-categorie="' + cat + '">' + cat + "</button>";
+    });
+    document.querySelector(".filtres-list").innerHTML = filtresHTML;
+
+    // Afficher les produits
+    function afficherProduits(filtre) {
+      var html = "";
+      var produitsFiltrés = filtre === "tous"
+        ? produits
+        : produits.filter(function (p) { return p.categorie === filtre; });
+
+      if (produitsFiltrés.length === 0) {
+        html = '<div class="vide"><p>Aucun pack dans cette catégorie pour le moment.</p></div>';
+      } else {
+        produitsFiltrés.forEach(function (p, index) {
+          // Trouver l'index original dans la liste complète
+          var origIndex = produits.indexOf(p);
+          // Les 3 premières cartes visibles chargées en priorité (au-dessus de la ligne de flottaison)
+          var imgAttrs = index < 3
+            ? 'loading="eager" fetchpriority="high"'
+            : 'loading="lazy"';
+          html +=
+            '<a href="produit.html?id=' + origIndex + '&cat=' + encodeURIComponent(p.categorie || '') + '" class="produit-card" style="animation-delay:' + (index * 0.08) + 's">' +
+              '<div class="produit-card-img-wrap">' +
+                '<img class="produit-card-img img-chargement" src="' + netlifyImg(p.image || IMG_PLACEHOLDER, 600) + '" alt="' + p.nom + '" ' + imgAttrs + ' onload="this.classList.remove(\'img-chargement\')" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'; this.classList.remove(\'img-chargement\')">' +
+                '<div class="produit-card-overlay"><span>Voir le pack</span></div>' +
+              '</div>' +
+              '<div class="produit-card-body">' +
+                '<div class="produit-card-categorie">' + (p.categorie || "") + "</div>" +
+                '<div class="produit-card-nom">' + p.nom + "</div>" +
+                '<div class="produit-card-prix">' + formatPrix(p.prix) + "</div>" +
+              "</div>" +
+            "</a>";
+        });
+      }
+      grille.innerHTML = html;
+    }
+
+    // Appliquer le filtre depuis l'URL si présent (ex: retour depuis une page produit)
+    var catParam = getParam("cat");
+    var filtreInitial = (catParam && categories.indexOf(catParam) !== -1) ? catParam : "tous";
+    afficherProduits(filtreInitial);
+
+    // Activer visuellement le bon bouton filtre
+    document.querySelectorAll(".filtre-btn").forEach(function(b) {
+      b.classList.toggle("actif", b.dataset.categorie === filtreInitial);
+    });
+
+    // Gestion des filtres
+    document.querySelector(".filtres-list").addEventListener("click", function (e) {
+      if (!e.target.classList.contains("filtre-btn")) return;
+      document.querySelectorAll(".filtre-btn").forEach(function (b) {
+        b.classList.remove("actif");
+      });
+      e.target.classList.add("actif");
+      afficherProduits(e.target.dataset.categorie);
+    });
+  } catch (err) {
+    grille.innerHTML =
+      '<div class="erreur-msg">' +
+        '<h2>Impossible de charger les packs</h2>' +
+        '<p>Vérifiez votre connexion internet et réessayez.</p>' +
+      '</div>';
+  }
+}
+
+// ============================================================
+// PAGE PRODUIT (produit.html)
+// ============================================================
+
+var produitActuel = null;
+var codePromoValide = null;
+var reductionPourcent = 0;
+var quantiteSelectionnee = 1;
+
+async function chargerProduit() {
+  var container = document.getElementById("produit-detail");
+  if (!container) return;
+
+  var id = getParam("id");
+  if (id === null) {
+    var catRetourErreur = getParam("cat") || "";
+    var urlRetourErreur = catRetourErreur ? "index.html?cat=" + encodeURIComponent(catRetourErreur) : "index.html";
+    container.innerHTML = '<div class="erreur-msg"><h2>Pack introuvable</h2><p><a href="' + urlRetourErreur + '" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
+    return;
+  }
+
+  try {
+    var produits = await getProduitsCaches();
+    var produit = produits[parseInt(id)];
+
+    if (!produit) {
+      container.innerHTML = '<div class="erreur-msg"><h2>Pack introuvable</h2><p><a href="index.html" class="btn-retour">&larr; Retour au catalogue</a></p></div>';
+      return;
+    }
+
+    produitActuel = produit;
+    document.title = produit.nom + " — " + CONFIG.NOM_BOUTIQUE;
+
+    var catRetour = getParam("cat") || produit.categorie || "";
+    var urlRetour = catRetour ? "index.html?cat=" + encodeURIComponent(catRetour) : "index.html";
+
+    container.innerHTML =
+      '<a href="' + urlRetour + '" class="btn-retour">&larr; Retour au catalogue</a>' +
+
+      '<div class="produit-layout">' +
+        // Colonne image
+        '<div class="produit-galerie">' +
+          '<img class="produit-detail-img img-chargement" src="' + netlifyImg(produit.image || IMG_PLACEHOLDER, 900) + '" alt="' + produit.nom + '" loading="eager" onload="this.classList.remove(\'img-chargement\')" onerror="this.src=\'' + IMG_PLACEHOLDER + '\'; this.classList.remove(\'img-chargement\')">' +
+        '</div>' +
+
+        // Colonne infos
+        '<div class="produit-info">' +
+          '<div class="produit-detail-categorie">' + (produit.categorie || "") + '</div>' +
+          '<h1 class="produit-detail-nom">' + produit.nom + '</h1>' +
+          '<div class="produit-detail-prix">' + formatPrix(produit.prix) + '</div>' +
+          '<div class="produit-detail-divider"></div>' +
+          '<p class="produit-detail-desc">' + (produit.description || "") + '</p>' +
+
+          // Trust badges
+          '<div class="trust-badges">' +
+            '<div class="trust-badge">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' +
+              'Paiement sécurisé' +
+            '</div>' +
+            '<div class="trust-badge">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>' +
+              'Service personnalisé' +
+            '</div>' +
+          '</div>' +
+
+          // Formulaire
+          '<div class="commande-form">' +
+            '<h2>Réserver ce pack</h2>' +
+
+            '<div class="form-group">' +
+              '<label for="nom">Nom complet <span class="obligatoire">*</span></label>' +
+              '<input type="text" id="nom" placeholder="Ex : Marie Diallo" required autocomplete="name">' +
+            '</div>' +
+
+            '<div class="form-group">' +
+              '<label for="tel">Téléphone <span class="obligatoire">*</span></label>' +
+              '<input type="tel" id="tel" placeholder="Ex : +225 07 XX XX XX" required autocomplete="tel">' +
+            '</div>' +
+
+            '<div class="form-group">' +
+              '<label for="email">Email <span class="obligatoire">*</span></label>' +
+              '<input type="email" id="email" placeholder="Ex : marie@gmail.com" required autocomplete="email">' +
+            '</div>' +
+
+            '<div class="form-group">' +
+              '<label for="quantite">Quantité</label>' +
+              '<div class="quantite-zone">' +
+                '<button type="button" class="btn-qty" id="btn-qty-moins">−</button>' +
+                '<input type="number" id="quantite" value="1" min="1" max="10" readonly>' +
+                '<button type="button" class="btn-qty" id="btn-qty-plus">+</button>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="form-group">' +
+              '<label for="code_promo">Code promo</label>' +
+              '<div class="promo-zone">' +
+                '<input type="text" id="code_promo" placeholder="Entrer un code">' +
+                '<button type="button" class="btn-verifier" id="btn-verifier">Appliquer</button>' +
+              '</div>' +
+              '<div class="promo-msg" id="promo-msg"></div>' +
+            '</div>' +
+
+            '<div class="prix-recap" id="prix-recap">' +
+              '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(produit.prix) + '</span></div>' +
+            '</div>' +
+
+            '<button type="button" class="btn-commander" id="btn-commander">Réserver maintenant</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Description longue HTML (sous le bloc produit)
+      (produit.description_longue ? '<div class="description-longue">' + produit.description_longue + '</div>' : '');
+
+    // Événements
+    document.getElementById("btn-verifier").addEventListener("click", verifierCode);
+    document.getElementById("btn-commander").addEventListener("click", passerCommande);
+    document.getElementById("code_promo").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); verifierCode(); }
+    });
+    document.getElementById("code_promo").addEventListener("input", function () {
+      // Si l'utilisateur modifie le champ après validation, on réinitialise
+      if (codePromoValide !== null) {
+        codePromoValide = null;
+        reductionPourcent = 0;
+        document.getElementById("promo-msg").textContent = "";
+        document.getElementById("promo-msg").className = "promo-msg";
+        majPrixRecap();
+      }
+    });
+
+    document.getElementById("btn-qty-moins").addEventListener("click", function () {
+      if (quantiteSelectionnee > 1) {
+        quantiteSelectionnee--;
+        document.getElementById("quantite").value = quantiteSelectionnee;
+        majPrixRecap();
+      }
+    });
+    document.getElementById("btn-qty-plus").addEventListener("click", function () {
+      if (quantiteSelectionnee < 10) {
+        quantiteSelectionnee++;
+        document.getElementById("quantite").value = quantiteSelectionnee;
+        majPrixRecap();
+      }
+    });
+
+  } catch (err) {
+    container.innerHTML =
+      '<div class="erreur-msg"><h2>Impossible de charger le pack</h2><p>Vérifiez votre connexion internet et réessayez.</p></div>';
+  }
+}
+
+async function verifierCode() {
+  var codeInput = document.getElementById("code_promo");
+  var msg = document.getElementById("promo-msg");
+  var code = codeInput.value.trim().toUpperCase();
+
+  if (!code) {
+    msg.textContent = "";
+    msg.className = "promo-msg";
+    codePromoValide = null;
+    reductionPourcent = 0;
+    majPrixRecap();
+    return;
+  }
+
+  msg.textContent = "Vérification...";
+  msg.className = "promo-msg";
+
+  try {
+    var data = await appelerAPI({ action: "valider_code", code: code });
+
+    if (data.valide) {
+      codePromoValide = code;
+      reductionPourcent = data.reduction;
+      msg.textContent = "Code valide ! -" + data.reduction + "% appliqué";
+      msg.className = "promo-msg succes";
+    } else {
+      codePromoValide = null;
+      reductionPourcent = 0;
+      msg.textContent = data.message || "Code invalide ou expiré";
+      msg.className = "promo-msg erreur";
+    }
+    majPrixRecap();
+  } catch (err) {
+    msg.textContent = "Erreur de vérification, réessayez";
+    msg.className = "promo-msg erreur";
+  }
+}
+
+function majPrixRecap() {
+  var recap = document.getElementById("prix-recap");
+  if (!produitActuel || !recap) return;
+
+  var prixUnitaire = produitActuel.prix;
+  var sousTotal = prixUnitaire * quantiteSelectionnee;
+
+  if (reductionPourcent > 0) {
+    var reduction = Math.round(sousTotal * reductionPourcent / 100);
+    var total = sousTotal - reduction;
+    recap.innerHTML =
+      (quantiteSelectionnee > 1 ? '<div class="prix-ligne"><span>Prix unitaire</span><span>' + formatPrix(prixUnitaire) + '</span></div>' +
+      '<div class="prix-ligne"><span>Sous-total (×' + quantiteSelectionnee + ')</span><span>' + formatPrix(sousTotal) + '</span></div>' : '') +
+      '<div class="prix-ligne barre"><span>Prix original</span><span>' + formatPrix(sousTotal) + '</span></div>' +
+      '<div class="prix-ligne reduction"><span>Réduction (' + reductionPourcent + '%)</span><span>-' + formatPrix(reduction) + '</span></div>' +
+      '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(total) + '</span></div>';
+  } else {
+    recap.innerHTML =
+      (quantiteSelectionnee > 1 ? '<div class="prix-ligne"><span>Prix unitaire</span><span>' + formatPrix(prixUnitaire) + '</span></div>' : '') +
+      '<div class="prix-ligne total"><span>Total</span><span>' + formatPrix(sousTotal) + '</span></div>';
+  }
+}
+
+async function passerCommande() {
+  var nom = document.getElementById("nom").value.trim();
+  var tel = document.getElementById("tel").value.trim();
+  var email = document.getElementById("email").value.trim();
+
+  // Validation
+  if (!nom) { alert("Veuillez entrer votre nom complet."); document.getElementById("nom").focus(); return; }
+  if (!tel) { alert("Veuillez entrer votre numéro de téléphone."); document.getElementById("tel").focus(); return; }
+  if (!email) { alert("Veuillez entrer votre adresse email."); document.getElementById("email").focus(); return; }
+  if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { alert("Veuillez entrer un email valide."); document.getElementById("email").focus(); return; }
+
+  // Afficher overlay
+  document.getElementById("overlay").classList.add("visible");
+  document.getElementById("btn-commander").disabled = true;
+
+  try {
+    // Détection Pass VIP
+    var estPassVip = (produitActuel.categorie && (produitActuel.categorie.toUpperCase().includes("PASS VIP") || produitActuel.categorie.toUpperCase() === "PASS VIP")) ||
+                     (produitActuel.nom && produitActuel.nom.toUpperCase().includes("PASS VIP"));
+
+    var data;
+
+    if (estPassVip) {
+      // Pass VIP → Appeler proxy Vercel (contourne CORS)
+      console.log("[PASS VIP] Détecté, appel proxy Vercel");
+      var proxyUrl = 'https://llui-signature-hebergements.vercel.app/api/boutique/pass-proxy';
+      
+      var response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: nom,
+          type_pass: produitActuel.nom,
+          montant: prixFinal,
+          code_promo: codePromoValide || null,
+          nom_affilie: nomAffilie || null,
+          tel: tel,
+          email: email,
+          date: new Date().toISOString()
+        })
+      });
+
+      data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur proxy');
+      }
+      
+      // Adapter la réponse du proxy au format attendu
+      data.succes = data.success || false;
+      
+    } else {
+      // Produit normal → Apps Script comme d'habitude
+      data = await posterAPI({
+        action: "commande",
+        nom_client: nom,
+        tel_client: tel,
+        email_client: email,
+        produit_nom: produitActuel.nom,
+        prix: produitActuel.prix,
+        quantite: quantiteSelectionnee,
+        code_promo: codePromoValide || "",
+      });
+    }
+
+    document.getElementById("overlay").classList.remove("visible");
+
+    if (data.succes) {
+      afficherConfirmation(data);
+    } else {
+      alert("Erreur : " + (data.message || "Impossible de passer la commande. Réessayez."));
+      document.getElementById("btn-commander").disabled = false;
+    }
+  } catch (err) {
+    document.getElementById("overlay").classList.remove("visible");
+    alert("Erreur de connexion. Vérifiez votre connexion internet et réessayez.");
+    document.getElementById("btn-commander").disabled = false;
+}
+}
+function afficherConfirmation(data) {
+  var container = document.getElementById("produit-detail");
+  container.innerHTML =
+    '<div class="confirmation">' +
+      '<div class="confirmation-icon">&#10003;</div>' +
+      '<h1>Réservation confirmée !</h1>' +
+      '<p>Merci pour votre confiance ! Notre équipe vous contactera pour les détails de votre prestation.</p>' +
+      '<div class="recap-box">' +
+        '<div class="recap-ligne"><span>Pack</span><span>' + produitActuel.nom + '</span></div>' +
+        '<div class="recap-ligne"><span>Client</span><span>' + data.client + '</span></div>' +
+        (data.quantite > 1 ? '<div class="recap-ligne"><span>Quantité</span><span>' + data.quantite + '</span></div>' : '') +
+        (data.code_promo ? '<div class="recap-ligne"><span>Code promo</span><span>' + data.code_promo + ' (-' + data.reduction + '%)</span></div>' : '') +
+        '<div class="recap-ligne"><span>Montant à payer</span><span>' + formatPrix(data.montant_final) + '</span></div>' +
+      '</div>' +
+      '<div class="recap-box" style="text-align:center; margin-bottom:2rem;">' +
+        '<p style="font-size:0.85rem; color:#888; margin-bottom:0.75rem;">Pour finaliser, envoyez le montant par Orange Money au :</p>' +
+        '<p style="font-size:1.4rem; font-weight:800; letter-spacing:1px; margin-bottom:0.25rem;">6 93 40 79 64</p>' +
+        '<p style="font-size:0.9rem; font-weight:600;">Olivier SERGE</p>' +
+      '</div>' +
+      '<a href="index.html" class="btn-retour-accueil">Voir nos autres packs</a>' +
+    '</div>';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// INITIALISATION
+// ============================================================
+
+document.addEventListener("DOMContentLoaded", function () {
+  var page = window.location.pathname.split("/").pop() || "index.html";
+
+  if (page === "index.html" || page === "") {
+    chargerCatalogue();
+  } else if (page === "produit.html") {
+    chargerProduit();
+  }
+});
