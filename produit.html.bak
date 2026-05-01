@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="L et Lui Signature — Wedding Planner au Cameroun. Packs mariage sur mesure : photographie, beauté, décoration.">
-  <title>L et Lui Signature</title>
+  <title>Pack — L et Lui Signature</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
@@ -28,34 +27,21 @@
     <div class="header-divider"></div>
   </header>
 
-  <!-- Hero -->
-  <section class="hero" id="hero">
-    <div class="hero-subtitle">Wedding Planner</div>
-    <h1 class="hero-title">Le mariage<br>de vos rêves</h1>
-    <p class="hero-text">Des packs sur mesure pour chaque étape de votre mariage. Photographie, beauté, décoration et plus encore.</p>
-    <a href="#catalogue" class="hero-btn">Découvrir nos packs</a>
-  </section>
-
-  <!-- Titre section -->
-  <div class="section-header" id="catalogue">
-    <h2>Nos packs</h2>
-    <p>Des prestations pensées pour rendre votre jour J inoubliable</p>
-  </div>
-
-  <!-- Filtres catégories -->
-  <section class="filtres">
-    <div class="filtres-list" id="filtres">
-      <button class="filtre-btn actif" data-categorie="tous">Tous</button>
-    </div>
-  </section>
-
-  <!-- Grille produits -->
-  <main class="produits-grid" id="produits-grid">
+  <!-- Contenu produit -->
+  <main class="produit-detail" id="produit-detail">
     <div class="chargement" id="chargement">
       <div class="spinner"></div>
-      <p>Chargement des packs...</p>
+      <p>Chargement du pack...</p>
     </div>
   </main>
+
+  <!-- Overlay chargement commande -->
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <div class="spinner"></div>
+      <p>Envoi de votre réservation...</p>
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">
@@ -65,9 +51,8 @@
   </footer>
 
   <script src="config.js"></script>
-  <script src="app-v2.js"></script>
+  <script src="app.js"></script>
 
-  <!-- Header scroll effect -->
   <script>
     window.addEventListener('scroll', function() {
       document.getElementById('header').classList.toggle('scrolled', window.scrollY > 50);

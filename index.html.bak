@@ -65,7 +65,7 @@
   </footer>
 
   <script src="config.js"></script>
-  <script src="app-v2.js"></script>
+  <script src="app.js"></script>
 
   <!-- Header scroll effect -->
   <script>
