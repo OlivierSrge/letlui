@@ -563,7 +563,6 @@ function afficherConfirmationPassVIP(data) {
   console.log("✅ Commande Pass VIP envoyée - Code:", codeSuivi);
 }
 
-}
 
 // ============================================================
 // INITIALISATION
